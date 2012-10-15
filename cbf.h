@@ -1,7 +1,7 @@
 typedef uint64_t Entry ;
 
 typedef struct _CBF{
-    unsigned int C; //counter Size
+    u_int C; //counter Size
     uint8_t* array;
 } CBF;
 
@@ -9,15 +9,16 @@ void reset_cbf(CBF* cbf){
 
 }
 
-void create_cbf(CBF* cbf, unsigned int C) {
+void create_cbf(CBF* cbf, u_int C) {
+    cbf = (CBF*) malloc(sizeof(CBF));
     cbf->C = C;
-    cbf->array = (uint8_t*) malloc(sizeof(uint8_t)*C);
+    cbf->array = (uint8_t*) calloc(C, sizeof(uint8_t));
     reset_cbf(cbf);
 }
 
-
-void cleanup_cbf(CBF* cbf, unsigned int C) {
+void cleanup_cbf(CBF* cbf) {
     free(cbf->array) ;
+    free(cbf);
 }
 
 void add_entry(CBF* cbf, Entry e){

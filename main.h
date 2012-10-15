@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <math.h>
+#ifndef _PKTHEADERS_H
 #include "pktHeaders.h"
+#endif
+
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -24,5 +27,5 @@
 #define IPID_GT(a,b)             ((short)((a)-(b)) > 0)
 #define IPID_GEQ(a,b)            ((short)((a)-(b)) >= 0)
 
-    char *file;			/* input link trace files */
-    int(*nextpkt)(pkt_t * p);  // pointer to nextpkt function
+char *file;			/* input link trace files */
+int (*nextpkt) (pkt_t * p);  // pointer to nextpkt function
