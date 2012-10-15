@@ -19,7 +19,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-#include "ale.h"
+#include "main.h"
 #include "readtraces.h"
 #include <stdio.h>
 

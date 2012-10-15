@@ -1,28 +1,46 @@
-#include <stdio.h>
-#include <math.h>
-#include "pktHeaders.h"
+#include "cbfList.h"
 
-#define _LARGEFILE_SOURCE
-#define _LARGEFILE64_SOURCE
-#define _FILE_OFFSET_BITS 64
-#define _GNU_SOURCE
+enum _ale_type {
+    U, E
+};
+typedef enum _ale_type ale_type;
+
+typedef struct _Ale {
+    unsigned int len;
+    unsigned int counters;
+    float W; //The span length (in seconds)
+    ale_type t; 
+    CBFList* head;
+
+} Ale;
+
+typedef struct _ReturnData {
+    float rtt; //(in milli seconds)
+    unsigned int valid;
+} ReturnData;
 
 
-/*
- * TCP sequence numbers are 32 bit integers operated
- * on with modular arithmetic.  These macros can be
- * used to compare such integers. 
- */
-#define SEQ_LT(a,b)             ((int)((a)-(b)) < 0)
-#define SEQ_LEQ(a,b)            ((int)((a)-(b)) <= 0)
-#define SEQ_GT(a,b)             ((int)((a)-(b)) > 0)
-#define SEQ_GEQ(a,b)            ((int)((a)-(b)) >= 0)
+void init_ale(Ale* ale,ale_type t,  float span_length, unsigned int window_count, unsigned int no_of_counters) {
 
-/* we do the same for the IP ids */
-#define IPID_LT(a,b)             ((short)((a)-(b)) < 0)
-#define IPID_LEQ(a,b)            ((short)((a)-(b)) <= 0)
-#define IPID_GT(a,b)             ((short)((a)-(b)) > 0)
-#define IPID_GEQ(a,b)            ((short)((a)-(b)) >= 0)
+    ale->W = span_length ;
+    ale->len = window_count ;
+    ale->counters = no_of_counters;
+    ale->t = t;
+    create_cbf_list(ale->head, window_count, no_of_counters) ;  // uses malloc to allocate memory
+}
 
-    char *file;			/* input link trace files */
-    int(*nextpkt)(pkt_t * p);  // pointer to nextpkt function
+void cleanup_ale(Ale* ale)
+{
+    cleanup_cbf_list(ale->head);
+}
+
+void reset_ale(Ale* ale){
+    reset_cbf_list(ale->head);
+}
+
+int get_RTT_sample(Ale* ale, ReturnData* rdata, pkt_t* pkt) {
+
+    rdata->valid = 1;
+    return 0;
+}
+

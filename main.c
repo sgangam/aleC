@@ -16,8 +16,8 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include "main.h"
 #include "ale.h"
-#include "blist.h"
 
 char *progname;			/* the program name */
 
@@ -53,17 +53,18 @@ processtrace()
     if (trace < 0)
 	err(EXIT_FAILURE, "readnextpkt");
 
-    BucketList bucket_list;
-    //init_bucket_matrix(&bucket_list);
+    Ale ale;
+    ale_type type=U; float span_length=2.0 ; 
+    unsigned int window_count = 96, no_of_counters = 20000;
+    init_ale(&ale, type, span_length, window_count, no_of_counters);
     /* start reading the trace */
     while (trace != 0) {
 	if (pkt.ih.proto != 6) {
             continue;
         }
-        //ReturnData rdata;
-        //get_RTT_sample(&bucket_list, &rdata, &pkt);
-        int rtt_calculated = 1;
-        if (rtt_calculated == 1) {
+        ReturnData rdata;
+        get_RTT_sample(&ale, &rdata, &pkt);
+        if (rdata.valid == 1) {
             char out_string[STR_BUFLEN];
             memset(out_string,'\0',STR_BUFLEN);
             printPacket(&pkt, out_string);
@@ -71,7 +72,7 @@ processtrace()
         }
         trace = nextpkt(&pkt);
     }
-    //cleanup_bucket_matrix(&bucket_list);
+    cleanup_ale(&ale);
 }
 
 printPacket(pkt_t* pkt, char* out_string) {
