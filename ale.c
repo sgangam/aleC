@@ -17,6 +17,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include "ale.h"
+#include "blist.h"
 
 char *progname;			/* the program name */
 
@@ -52,7 +53,7 @@ processtrace()
     if (trace < 0)
 	err(EXIT_FAILURE, "readnextpkt");
 
-    //BucketList bucket_list;
+    BucketList bucket_list;
     //init_bucket_matrix(&bucket_list);
     /* start reading the trace */
     while (trace != 0) {

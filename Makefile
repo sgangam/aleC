@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -g -D_BSD_SOURCE
 PROGNAME= ale
 SRCS= tcpdump.c ale.c readtraces.c  
-INCS = ale.h pktHeaders.h readtraces.h tcpdump.h
+INCS =  ale.h blist.h cbf.h pktHeaders.h readtraces.h tcpdump.h
 
 OBJS = ${SRCS:.c=.o}
 
