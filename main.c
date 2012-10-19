@@ -61,7 +61,7 @@ void printPacket(pkt_t* pkt, char* out_string) {
     u_int32_t last_us = DAG2USEC(pkt->time);
     u_int32_t ack_no = H32(TCP(ack));
 
-    snprintf(out_string, STR_BUFLEN, "%.6f, %s, %s, %u, %u, %u\n", last+(last_us/1000000.0), 
+    snprintf(out_string, STR_BUFLEN, "%.6f %s %s %u %u %u\n", last+(last_us/1000000.0), 
             str_src_ip, str_dst_ip,
             sport, dport, ack_no);
 }
@@ -75,7 +75,7 @@ void processtrace()
 	err(EXIT_FAILURE, "readnextpkt");
 
     Ale ale;
-    ale_type type=U; float span_length=2.0 ; 
+    ale_type type=U; float span_length=2000 ; 
     u_int window_count = 96, no_of_counters = 20000;
     init_ale(&ale, type, span_length, window_count, no_of_counters);
     /* start reading the trace */
@@ -83,7 +83,7 @@ void processtrace()
 	if (pkt.ih.proto != 6) {
             continue;
         }
-        ReturnData rdata;
+        ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
         get_RTT_sample(&ale, &rdata, &pkt);
         if (rdata.rtt_valid == 1) {
             char out_string[STR_BUFLEN];

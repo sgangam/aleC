@@ -6,6 +6,7 @@ typedef struct _CBF{
 } CBF;
 
 void reset_cbf(CBF* cbf){
+    //TODO
 
 }
 
@@ -22,14 +23,17 @@ void cleanup_cbf(CBF* cbf) {
 }
 
 void add_cbf_entry(CBF* cbf, Entry e){
+    //TODO
 
 }
 
 int lookup_and_remove_cbf_entry(CBF* cbf, Entry e){
+    //TODO
     return 0;
 }
 
 void remove_cbf_entry(CBF* cbf, Entry e){
+    //TODO
 
 }
 
