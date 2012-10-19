@@ -1,4 +1,6 @@
 #include "cbfList.h"
+#include "assert.h"
+#include "hashfunctions.h"
 #ifndef _PKTHEADERS_H
 #include "pktHeaders.h"
 #endif
@@ -21,7 +23,7 @@ typedef struct _Ale {
 
 typedef struct _ReturnData {
     float rtt; //(in milli seconds)
-    u_int valid;
+    u_int rtt_valid;
 } ReturnData;
 
 void init_ale(Ale* ale,ale_type t,  float span_length, u_int window_count, u_int no_of_counters) {
@@ -46,7 +48,25 @@ void reset_ale(Ale* ale){
 }
 
 void update_cbflist(Ale* ale, pkt_t* pkt) {
+    //TODO
 }
+
+int lookup_ack_from_ale(entry) {
+    //TODO
+    int index = -1;
+    return index;
+}
+
+float get_rtt_from_index(u_int index) {
+    //TODO
+    return 0;
+}
+
+Entry get_hash_value (u_int ack, u_int a, u_int b, u_int c, u_int d) {
+    u_int array[5];
+    array[0] = ack; array[1] = a; array[2] = b; array[3] = c; array[4] = d; 
+    return hashword(array, 5, 0);
+} 
 
 void process_data(Ale* ale, pkt_t* pkt) {
     u_int pktlen = (int) H16(IP(len));
@@ -62,15 +82,27 @@ void process_data(Ale* ale, pkt_t* pkt) {
         return;
     }
     u_int expected_ack = H32(TCP(seq)) + payload;
-    //printf("%u ", expected_ack);
+    Entry entry = get_hash_value(expected_ack, N32(IP(src_ip)), N32(IP(dst_ip)), H16(TCP(src_port)), H16(TCP(dst_port)));
+    //printf("expected_ack:%u , hashed value: %u \n",expected_ack, entry);
+    int index = lookup_ack_from_ale(entry);
+    assert (index >=-2 && index <= (int)(ale->len -1));
+    if (index == -2)
+        add_cbf_entry(ale->ccbf, entry);
 }
 
 void process_ack(Ale* ale,  ReturnData* rdata, pkt_t* pkt) {
-    rdata->valid = 1;
+    Entry entry = get_hash_value(H32(TCP(ack)), N32(IP(dst_ip)), N32(IP(src_ip)), H16(TCP(dst_port)), H16(TCP(src_port)) ); // Note the hash order is different.
+    //printf("hashed value: %u \n", entry);
+    int index = lookup_ack_from_ale(entry);
+    assert (index >=-2 && index <= (int)(ale->len -1));
+    if (index >= -1) {
+        float rtt = get_rtt_from_index(index); 
+        rdata->rtt_valid = 1;
+        rdata->rtt = rtt;
+    }
 }
 
 void get_RTT_sample(Ale* ale, ReturnData* rdata, pkt_t* pkt) {
-
     update_cbflist(ale, pkt); // Check if we have to push some cbf's and add new empty ones.
     process_data(ale, pkt);
     process_ack(ale, rdata, pkt);

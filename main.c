@@ -20,6 +20,7 @@
 #include "ale.h"
 
 char *progname;			/* the program name */
+int open_tracefile(char* file);
 
 
 
@@ -44,38 +45,7 @@ char *progname;			/* the program name */
  * traces, identifies the flow the packets belong and calls
  * the handlepkt to compute per connection statistics. 
  */
-void
-processtrace()
-{
-    pkt_t pkt;
-    int trace;
-    trace=nextpkt(&pkt);
-    if (trace < 0)
-	err(EXIT_FAILURE, "readnextpkt");
-
-    Ale ale;
-    ale_type type=U; float span_length=2.0 ; 
-    u_int window_count = 96, no_of_counters = 20000;
-    init_ale(&ale, type, span_length, window_count, no_of_counters);
-    /* start reading the trace */
-    while (trace != 0) {
-	if (pkt.ih.proto != 6) {
-            continue;
-        }
-        ReturnData rdata;
-        get_RTT_sample(&ale, &rdata, &pkt);
-        if (rdata.valid == 1) {
-            char out_string[STR_BUFLEN];
-            memset(out_string,'\0',STR_BUFLEN);
-            printPacket(&pkt, out_string);
-            printf("%s", out_string);
-        }
-        trace = nextpkt(&pkt);
-    }
-    cleanup_ale(&ale);
-}
-
-printPacket(pkt_t* pkt, char* out_string) {
+void printPacket(pkt_t* pkt, char* out_string) {
     struct in_addr inaddr_src_ip, inaddr_dst_ip;
     inaddr_src_ip.s_addr = N32(IP(src_ip))  ;
     inaddr_dst_ip.s_addr = N32(IP(dst_ip)) ;
@@ -95,6 +65,37 @@ printPacket(pkt_t* pkt, char* out_string) {
             str_src_ip, str_dst_ip,
             sport, dport, ack_no);
 }
+
+void processtrace()
+{
+    pkt_t pkt;
+    int trace;
+    trace=nextpkt(&pkt);
+    if (trace < 0)
+	err(EXIT_FAILURE, "readnextpkt");
+
+    Ale ale;
+    ale_type type=U; float span_length=2.0 ; 
+    u_int window_count = 96, no_of_counters = 20000;
+    init_ale(&ale, type, span_length, window_count, no_of_counters);
+    /* start reading the trace */
+    while (trace != 0) {
+	if (pkt.ih.proto != 6) {
+            continue;
+        }
+        ReturnData rdata;
+        get_RTT_sample(&ale, &rdata, &pkt);
+        if (rdata.rtt_valid == 1) {
+            char out_string[STR_BUFLEN];
+            memset(out_string,'\0',STR_BUFLEN);
+            printPacket(&pkt, out_string);
+            printf("%s", out_string);
+        }
+        trace = nextpkt(&pkt);
+    }
+    cleanup_ale(&ale);
+}
+
 /* 
  * -- main 
  * 
@@ -109,12 +110,13 @@ main(int argc, char *argv[])
         printf("Usage: <program> pcapFile\n");
         return -1;
     }
+    /*
     struct timeval start, finish;
     int hh, mm, ss;
     int i;
 
     gettimeofday(&start, NULL);
-
+    */
     /* parse command line */
     progname = argv[0];
     file =  argv[1];

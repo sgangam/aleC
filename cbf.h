@@ -1,4 +1,4 @@
-typedef uint64_t Entry ;
+typedef uint32_t Entry ;
 
 typedef struct _CBF{
     u_int C; //counter Size
@@ -21,15 +21,15 @@ void cleanup_cbf(CBF* cbf) {
     free(cbf);
 }
 
-void add_entry(CBF* cbf, Entry e){
+void add_cbf_entry(CBF* cbf, Entry e){
 
 }
 
-int lookup_and_remove_entry(CBF* cbf, Entry e){
+int lookup_and_remove_cbf_entry(CBF* cbf, Entry e){
     return 0;
 }
 
-void remove_entry(CBF* cbf, Entry e){
+void remove_cbf_entry(CBF* cbf, Entry e){
 
 }
 

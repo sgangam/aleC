@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -g -D_BSD_SOURCE
+CFLAGS = -Wall -g -D_BSD_SOURCE
 PROGNAME= ale
 SRCS= tcpdump.c main.c readtraces.c  
-INCS =   main.h ale.h cbfList.h cbf.h pktHeaders.h readtraces.h tcpdump.h
+INCS =   main.h ale.h cbfList.h cbf.h pktHeaders.h readtraces.h tcpdump.h hashfunctions.h
 
 OBJS = ${SRCS:.c=.o}
 
