@@ -17,8 +17,7 @@ typedef struct _Ale {
     float W; //The span length (in milli seconds)
     float w; //The width of the time bucket B[0]. in milliseconds.
     ale_type t; 
-    CBFList* head;
-    CBF* ccbf; // current cbf
+    CBFList cbfl;
     float ts; // The timestamp of the Ale structure. Points to the max timestamp value of any packet stored in the CBFlist.
 
 } Ale;
@@ -37,28 +36,41 @@ void init_ale(Ale* ale, ale_type t,  float span_length, u_int window_count, u_in
     ale->ts = 0;
     if (t == U)
         ale->w = ale->W*1.0/ale->len ;
-    else if (t == E) {
-        //TODO
+    else if (t == E) { //TODO
         assert(0);
     }
 
-    create_cbf_list(ale->head, window_count, no_of_counters) ;  // uses malloc to allocate memory
-    create_cbf(ale->ccbf, no_of_counters) ;  // uses malloc to allocate memory
+    create_cbf_list(&ale->cbfl, ale->len, ale->counters) ;  // uses malloc to allocate memory
 }
 
 void cleanup_ale(Ale* ale)
 {
-    cleanup_cbf_list(ale->head);
-    cleanup_cbf(ale->ccbf);
+    cleanup_cbf_list(&ale->cbfl);
 }
 
 void reset_ale(Ale* ale){
-    reset_cbf_list(ale->head);
-    reset_cbf(ale->ccbf);
+    reset_cbf_list(&ale->cbfl);
 }
 
-void update_cbflist(Ale* ale, pkt_t* pkt) {
-    //TODO
+void update_cbflist_u(Ale* ale, pkt_t* pkt) {
+    u_int32_t last = DAG2SEC(pkt->time);
+    u_int32_t last_us = DAG2USEC(pkt->time);
+    float ts = last+(last_us/1000000.0) ;
+    if (ale->ts == 0) {
+        ale->ts = ts;
+        return;
+    }
+
+    if (ts >= ale->ts + (ale->W + ale->w)/1000.0) {
+        reset_ale(ale);
+        ale->ts = ts;
+        return;
+    }
+    else {
+        u_int elapsed_windows = (u_int)((ts - ale->ts) / (ale->w/1000.0));
+        assert (elapsed_windows > 0 && elapsed_windows < ale->len + 1);
+        move_time_buckets(&ale->cbfl, elapsed_windows, ale->len, ale->counters);
+    }
 }
 
 void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
@@ -82,16 +94,6 @@ void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
     }
 }
 
-/*Looks up the entry in all the Ale's CBFs and returns the bucket index where
- * the entry was found. It also the entry in the CBF*/
-int lookup_ack_from_ale(Ale* ale, Entry entry) {
-    int found = 0;
-    found = lookup_and_remove_cbf_entry(ale->ccbf, entry);
-    if (found == 1)
-        return -1;
-    else
-        return lookup_and_remove_cbf_list_entry(ale->head, entry);
-}
 
 Entry get_hash_value (u_int ack, u_int a, u_int b, u_int c, u_int d) {
     u_int array[5];
@@ -115,23 +117,26 @@ void process_data(Ale* ale, pkt_t* pkt) {
     u_int expected_ack = H32(TCP(seq)) + payload;
     Entry entry = get_hash_value(expected_ack, N32(IP(src_ip)), N32(IP(dst_ip)), H16(TCP(src_port)), H16(TCP(dst_port)));
     //printf("expected_ack:%u , hashed value: %u \n",expected_ack, entry);
-    int index = lookup_ack_from_ale(ale, entry);
+    int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
     assert (index >=-2 && index <= (int)(ale->len -1));
     if (index == -2)
-        add_cbf_entry(ale->ccbf, entry);
+        add_cbf_list_entry(&ale->cbfl, entry);
 }
 
 void process_ack(Ale* ale,  ReturnData* rdata, pkt_t* pkt) {
     Entry entry = get_hash_value(H32(TCP(ack)), N32(IP(dst_ip)), N32(IP(src_ip)), H16(TCP(dst_port)), H16(TCP(src_port)) ); // Note the hash order is different.
     //printf("hashed value: %u \n", entry);
-    int index = lookup_ack_from_ale(ale, entry);
+    int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
     assert (index >=-2 && index <= (int)(ale->len -1));
     if (index >= -1) 
         get_rtt_from_index(ale, pkt, rdata, index); 
 }
 
 void get_RTT_sample(Ale* ale, ReturnData* rdata, pkt_t* pkt) {
-    update_cbflist(ale, pkt); // Check if we have to push some cbf's and add new empty ones.
+    if (ale->t == U)
+        update_cbflist_u(ale, pkt); // Check if we have to push some cbf's and add new empty ones.
+    else
+        assert(0); //TODO
     process_data(ale, pkt);
     process_ack(ale, rdata, pkt);
 }

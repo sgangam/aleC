@@ -27,7 +27,7 @@ void add_cbf_entry(CBF* cbf, Entry e){
 
 }
 
-int lookup_and_remove_cbf_entry(CBF* cbf, Entry e){
+u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry e){
     //TODO
     return 0;
 }
