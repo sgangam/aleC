@@ -12,7 +12,7 @@ enum _ale_type {
 typedef enum _ale_type ale_type;
 
 typedef struct _Ale {
-    u_int len;
+    u_int len; //This includes the current cbf which is the first element of the list.
     u_int counters;
     float W; //The span length (in milli seconds)
     float w; //The width of the time bucket B[0]. in milliseconds.
@@ -52,7 +52,16 @@ void reset_ale(Ale* ale){
     reset_cbf_list(&ale->cbfl);
 }
 
-void update_cbflist_u(Ale* ale, pkt_t* pkt) {
+u_int get_pop_index(Ale* ale) {
+    if (ale->t == U)
+        return ale->len - 2 ;
+    else {
+        assert(0);
+        return 0;
+    //TODO
+    }
+}
+void update_cbflist(Ale* ale, pkt_t* pkt) {
     u_int32_t last = DAG2SEC(pkt->time);
     u_int32_t last_us = DAG2USEC(pkt->time);
     float ts = last+(last_us/1000000.0) ;
@@ -60,17 +69,13 @@ void update_cbflist_u(Ale* ale, pkt_t* pkt) {
         ale->ts = ts;
         return;
     }
-
-    if (ts >= ale->ts + (ale->W + ale->w)/1000.0) {
-        reset_ale(ale);
-        ale->ts = ts;
-        return;
+    while (ts >= ale->ts + ale->w/1000.0) {
+        u_int index = get_pop_index(ale);
+        list_pop_index(&ale->cbfl, index);
+        append_empty_nodes_head(&ale->cbfl, 1, ale->counters);
+        assert(ale->len == list_get_size(&ale->cbfl));
     }
-    else {
-        u_int elapsed_windows = (u_int)((ts - ale->ts) / (ale->w/1000.0));
-        assert (elapsed_windows > 0 && elapsed_windows < ale->len + 1);
-        move_time_buckets(&ale->cbfl, elapsed_windows, ale->len, ale->counters);
-    }
+    
 }
 
 void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
@@ -133,10 +138,7 @@ void process_ack(Ale* ale,  ReturnData* rdata, pkt_t* pkt) {
 }
 
 void get_RTT_sample(Ale* ale, ReturnData* rdata, pkt_t* pkt) {
-    if (ale->t == U)
-        update_cbflist_u(ale, pkt); // Check if we have to push some cbf's and add new empty ones.
-    else
-        assert(0); //TODO
+    update_cbflist(ale, pkt); // Check if we have to push some cbf's and add new empty ones.
     process_data(ale, pkt);
     process_ack(ale, rdata, pkt);
 }
