@@ -16,8 +16,8 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include "main.h"
 #include "ale.h"
+#include "main.h"
 
 char *progname;			/* the program name */
 int open_tracefile(char* file);
@@ -85,6 +85,7 @@ void processtrace()
         }
         ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
         get_RTT_sample(&ale, &rdata, &pkt);
+        rdata.rtt_valid = 1;
         if (rdata.rtt_valid == 1) {
             char out_string[STR_BUFLEN];
             memset(out_string,'\0',STR_BUFLEN);

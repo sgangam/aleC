@@ -1,15 +1,14 @@
 #include <stdio.h>
 #include <math.h>
-#ifndef _PKTHEADERS_H
-#include "pktHeaders.h"
-#endif
-
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
 
+#ifndef _PKTHEADERS_H
+#include "pktHeaders.h"
+#endif
 
 /*
  * TCP sequence numbers are 32 bit integers operated

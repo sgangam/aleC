@@ -23,28 +23,30 @@ typedef uint32_t Entry ;
 typedef struct _CBF{
     u_int C; //counter Size
     uint8_t* array;
+    u_int array_count;
     u_int hash_count;
 } CBF;
 
 void reset_cbf(CBF* cbf){
-    memset(cbf->array,0, cbf->C << 1);
+    memset(cbf->array, 0, cbf->array_count);
 }
 
 void create_cbf(CBF* cbf, u_int C) {
     cbf->hash_count = CBF_HASH_FUNCTIONS_COUNT;
-    cbf->C = (C >> 1) << 1;
-    cbf->array = (uint8_t*) calloc(cbf->C >> 1, sizeof(uint8_t)); // each 8 byte entry has two counters
+    cbf->array_count =  (C >> 1);
+    cbf->C = cbf->array_count << 1;
+    cbf->array = (uint8_t*) calloc( cbf->array_count, sizeof(uint8_t)); // each 8 byte entry has two counters
     reset_cbf(cbf);
 }
 
 void print_array(CBF* cbf) {
     u_int i;
-    for (i=0;i<(cbf->C>>1); i++)
+    for (i = 0;i < cbf->array_count; i++)
         printf("%u,",cbf->array[i]);
 }
 
 void cleanup_cbf(CBF* cbf) {
-    printf("Freeing cbf array:%x\n",cbf->array);
+    //printf("Freeing cbf array:%x\n",cbf->array);
     //print_array(cbf);
     free(cbf->array) ;
 }
@@ -56,9 +58,9 @@ u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index) {
 
 void add_cbf_entry(CBF* cbf, Entry entry){
     int i;
-    for (i = 0; i< cbf->hash_count ; i++){
+    for (i = 0; i < cbf->hash_count ; i++){
         u_int h = get_hash_index(cbf, entry, i);    
-        u_int ai = h >> 1;
+        u_int ai = h >> 1; //divide by 2.
         assert (h >= 0 && h < cbf->C);
         if (h & 1U)
             cbf->array[ai] = INC_MSB(cbf->array[ai]);
@@ -97,4 +99,3 @@ u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry entry){
     return found;
 }
 
-//(struct CBF*) malloc(sizeof(CBF)*blist->len);

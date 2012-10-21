@@ -1,5 +1,5 @@
 #include "cbfList.h"
-#include "assert.h"
+#include <assert.h>
 #include "hashfunctions.h"
 #ifndef _PKTHEADERS_H
 #include "pktHeaders.h"
@@ -67,7 +67,8 @@ u_int get_pop_index(Ale* ale) {
 void update_cbflist(Ale* ale, pkt_t* pkt) {
     u_int32_t last = DAG2SEC(pkt->time);
     u_int32_t last_us = DAG2USEC(pkt->time);
-    float ts = last+(last_us/1000000.0) ;
+    float ts = last + (last_us/1000000.0) ;
+    printf("ts:0.6%f, ale->ts:0.6%f , ale->w:%f\n", ts, ale->ts, ale->w);
     if (ale->ts == 0) {
         ale->ts = ts;
         return;
@@ -78,6 +79,8 @@ void update_cbflist(Ale* ale, pkt_t* pkt) {
             list_pop_back(&ale->cbfl);
         else
             list_pop_index(&ale->cbfl, index);
+
+        ale->ts = ale->ts + ((ale->w)/1000.0) ;
         append_empty_nodes_head(&ale->cbfl, 1, ale->counters);
         assert(ale->len == list_get_size(&ale->cbfl));
     }
