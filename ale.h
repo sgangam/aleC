@@ -28,7 +28,7 @@ typedef struct _ReturnData {
 } ReturnData;
 
 void init_ale(Ale* ale, ale_type t,  float span_length, u_int window_count, u_int no_of_counters) {
-
+    //printf("Ale length: %u\n", window_count);
     ale->W = span_length ;
     ale->len = window_count ;
     ale->counters = no_of_counters;
@@ -41,6 +41,7 @@ void init_ale(Ale* ale, ale_type t,  float span_length, u_int window_count, u_in
     }
 
     create_cbf_list(&ale->cbfl, ale->len, ale->counters) ;  // uses malloc to allocate memory
+    assert(ale->len == list_get_size(&ale->cbfl));
 }
 
 void cleanup_ale(Ale* ale)
@@ -73,7 +74,10 @@ void update_cbflist(Ale* ale, pkt_t* pkt) {
     }
     while (ts >= ale->ts + ale->w/1000.0) {
         u_int index = get_pop_index(ale);
-        list_pop_index(&ale->cbfl, index);
+        if (index == ale->len - 2) // optimizing common case.
+            list_pop_back(&ale->cbfl);
+        else
+            list_pop_index(&ale->cbfl, index);
         append_empty_nodes_head(&ale->cbfl, 1, ale->counters);
         assert(ale->len == list_get_size(&ale->cbfl));
     }

@@ -62,7 +62,7 @@ void list_pop_index(CBFList* cbfl, u_int index) { // index 0 is the first elemen
     assert (index>=0 && index < cbfl->len - 1); // cbfl->len has 1 element more than reqd.
     ListNode* curr = cbfl->head->next;
     u_int current_index = -1;
-    while (curr->next != NULL) {
+    while (curr != cbfl->tail) {
         if (index == current_index) {
             list_pop_node(curr);
             cbfl->len--;
@@ -80,25 +80,26 @@ void append_empty_nodes_head(CBFList* cbfl, u_int len, u_int no_of_counters) {  
         ListNode* new_node = (ListNode*) malloc(sizeof(ListNode));
         create_cbf(&new_node->cbf, no_of_counters);
         list_push_front(cbfl, new_node);
-        cbfl->len++;
     }
 }
 
 
-void create_cbf_list(CBFList* cbfl, u_int len, u_int no_of_counters) {  // uses malloc to allocate memory
+void create_cbf_list(CBFList* cbfl, u_int len, u_int no_of_counters) { 
     create_empty_list(cbfl);
     append_empty_nodes_head(cbfl, len, no_of_counters);
 }
 
 void clear_list(CBFList* cbfl){
+    if (cbfl->len == 0)
+        return;
     ListNode* curr = cbfl->head->next;
-    while (curr->next != NULL) {
+    while (curr != cbfl->tail) {
         cleanup_cbf(&curr->cbf);
         ListNode* next_ptr = curr->next;
         free(curr);
+        cbfl->len--;
         curr = next_ptr;
     }
-    cbfl->len=0;
 }
 
 void cleanup_cbf_list(CBFList* cbfl){
@@ -109,7 +110,7 @@ void cleanup_cbf_list(CBFList* cbfl){
 
 void reset_cbf_list(CBFList* cbfl){
     ListNode* curr = cbfl->head->next;
-    while (curr->next != NULL)  {
+    while (curr != cbfl->tail)  {
         reset_cbf(&curr->cbf);
         curr = curr->next;
     }
@@ -122,7 +123,7 @@ void reset_cbf_list(CBFList* cbfl){
 int lookup_and_remove_cbf_list_entry(CBFList* cbfl, Entry e) {
     ListNode* curr = cbfl->head->next;
     u_int found = 0, index = -1;
-    while (curr->next != NULL) {
+    while (curr != cbfl->tail) {
         found = lookup_and_remove_cbf_entry(&curr->cbf, e);
         if (found == 1)
             return index;

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g -D_BSD_SOURCE
+CFLAGS = -O3 -Wall -g -D_BSD_SOURCE
 PROGNAME= ale
 SRCS= tcpdump.c main.c readtraces.c  
 INCS =   main.h ale.h cbfList.h cbf.h pktHeaders.h readtraces.h tcpdump.h hashfunctions.h
