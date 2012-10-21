@@ -55,11 +55,13 @@ void reset_ale(Ale* ale){
 u_int get_pop_index(Ale* ale) {
     if (ale->t == U)
         return ale->len - 2 ;
-    else {
+    else if (ale->t == E){
         assert(0);
         return 0;
     //TODO
     }
+    else
+        assert(0);
 }
 void update_cbflist(Ale* ale, pkt_t* pkt) {
     u_int32_t last = DAG2SEC(pkt->time);

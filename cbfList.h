@@ -74,11 +74,6 @@ void list_pop_index(CBFList* cbfl, u_int index) { // index 0 is the first elemen
     assert(0);
 }
 
-void create_cbf_list(CBFList* cbfl, u_int len, u_int no_of_counters) {  // uses malloc to allocate memory
-    create_empty_list(cbfl);
-    append_empty_nodes_head(cbfl, len, no_of_counters);
-}
-
 void append_empty_nodes_head(CBFList* cbfl, u_int len, u_int no_of_counters) {  // uses malloc to allocate memory
     int i;
     for (i=0;i<len;i++) {
@@ -87,6 +82,12 @@ void append_empty_nodes_head(CBFList* cbfl, u_int len, u_int no_of_counters) {  
         list_push_front(cbfl, new_node);
         cbfl->len++;
     }
+}
+
+
+void create_cbf_list(CBFList* cbfl, u_int len, u_int no_of_counters) {  // uses malloc to allocate memory
+    create_empty_list(cbfl);
+    append_empty_nodes_head(cbfl, len, no_of_counters);
 }
 
 void clear_list(CBFList* cbfl){
