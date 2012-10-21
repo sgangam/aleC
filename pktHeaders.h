@@ -215,7 +215,9 @@ struct _pkt {
 #define TIME2DAG(s, u)				\
 	 ((((u_int64_t) (s)) << 32) + ((((u_int64_t) (u)) << 32) / 1000000))
 
+
 #endif				/* _PKTHEADERS_H */
+
 
 struct flow_id {
     uint32_t dst_ip, src_ip;
@@ -228,4 +230,5 @@ struct rule {
     struct flow_id mask;
     struct rule *next;
 };
+
 

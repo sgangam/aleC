@@ -1,10 +1,38 @@
 #include "cbfList.h"
 #include <assert.h>
-#include "hashfunctions.h"
 #ifndef _PKTHEADERS_H
 #include "pktHeaders.h"
 #endif
+#define BUFSIZE	 1024
+#define STR_BUFLEN 1024
 
+void printPacket(pkt_t* pkt, char* out_string) {
+    struct in_addr inaddr_src_ip, inaddr_dst_ip;
+    inaddr_src_ip.s_addr = N32(IP(src_ip))  ;
+    inaddr_dst_ip.s_addr = N32(IP(dst_ip)) ;
+    char str_src_ip[BUFSIZE];
+    char str_dst_ip[BUFSIZE];
+    memset(str_src_ip,'\0',STR_BUFLEN);
+    memset(str_dst_ip,'\0',STR_BUFLEN);
+    inet_ntop(AF_INET,& (inaddr_src_ip), str_src_ip, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET,& (inaddr_dst_ip), str_dst_ip, INET_ADDRSTRLEN);
+    uint16_t sport = H16(TCP(src_port));
+    uint16_t dport = H16(TCP(dst_port));
+    u_int32_t last = DAG2SEC(pkt->time);
+    u_int32_t last_us = DAG2USEC(pkt->time);
+    u_int32_t ack_no = H32(TCP(ack));
+
+    snprintf(out_string, STR_BUFLEN, "%.6f %s %s %u %u %u", last + (last_us/1000000.0), 
+            str_src_ip, str_dst_ip,
+            sport, dport, ack_no);
+}
+
+void printPacketStdout(pkt_t* pkt, double rtt){
+    char out_string[STR_BUFLEN];
+    memset(out_string,'\0',STR_BUFLEN);
+    printPacket(pkt, out_string);
+    printf("%s %f\n", out_string, rtt);
+}
 
 enum _ale_type {
     U, E
@@ -14,20 +42,20 @@ typedef enum _ale_type ale_type;
 typedef struct _Ale {
     u_int len; //This includes the current cbf which is the first element of the list.
     u_int counters;
-    float W; //The span length (in milli seconds)
-    float w; //The width of the time bucket B[0]. in milliseconds.
+    double W; //The span length (in milli seconds)
+    double w; //The width of the time bucket B[0]. in milliseconds.
     ale_type t; 
     CBFList cbfl;
-    float ts; // The timestamp of the Ale structure. Points to the max timestamp value of any packet stored in the CBFlist.
+    double ts; // The timestamp of the Ale structure. Points to the max timestamp value of any packet stored in the CBFlist.
 
 } Ale;
 
 typedef struct _ReturnData {
-    float rtt; //(in milli seconds)
+    double rtt; //(in milli seconds)
     u_int rtt_valid;
 } ReturnData;
 
-void init_ale(Ale* ale, ale_type t,  float span_length, u_int window_count, u_int no_of_counters) {
+void init_ale(Ale* ale, ale_type t,  double span_length, u_int window_count, u_int no_of_counters) {
     //printf("Ale length: %u\n", window_count);
     ale->W = span_length ;
     ale->len = window_count ;
@@ -67,8 +95,8 @@ u_int get_pop_index(Ale* ale) {
 void update_cbflist(Ale* ale, pkt_t* pkt) {
     u_int32_t last = DAG2SEC(pkt->time);
     u_int32_t last_us = DAG2USEC(pkt->time);
-    float ts = last + (last_us/1000000.0) ;
-    printf("ts:0.6%f, ale->ts:0.6%f , ale->w:%f\n", ts, ale->ts, ale->w);
+    double ts = last + (last_us/1000000.0); 
+
     if (ale->ts == 0) {
         ale->ts = ts;
         return;
@@ -90,24 +118,23 @@ void update_cbflist(Ale* ale, pkt_t* pkt) {
 void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
     u_int32_t last = DAG2SEC(pkt->time);
     u_int32_t last_us = DAG2USEC(pkt->time);
-    float ts = last+(last_us/1000000.0) ;
+    double ts = last + (last_us/1000000.0);
     rdata->rtt_valid = 1;
     if (index == -1)
         rdata->rtt = (ts - ale->ts)*1000/2.0 ;// Latency in milliseconds (Actually it is a+b/2  - b = a-b/ = a-b/22)
-    else if (index >= 0 && index < ale->len) {
+    else if (index >= 0) {
         if (ale->t == U)
             rdata->rtt = (index + 0.5) * ale->w + ((ts - ale->ts)*1000);
         else if (ale->t == E) {
             //TODO
             assert(0);
-            float min =  0, max = 0;
+            double min =  0, max = 0;
             rdata->rtt  = ((max + min)*0.5*ale->w) +  ((ts - ale->ts)*1000);
         }
         else 
             assert(0);
     }
 }
-
 
 Entry get_hash_value (u_int ack, u_int a, u_int b, u_int c, u_int d) {
     u_int array[5];
@@ -132,7 +159,7 @@ void process_data(Ale* ale, pkt_t* pkt) {
     Entry entry = get_hash_value(expected_ack, N32(IP(src_ip)), N32(IP(dst_ip)), H16(TCP(src_port)), H16(TCP(dst_port)));
     //printf("expected_ack:%u , hashed value: %u \n",expected_ack, entry);
     int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
-    assert (index >=-2 && index <= (int)(ale->len -1));
+    assert (index >=-2 && index <= (int)(ale->len - 2));
     if (index == -2)
         add_cbf_list_entry(&ale->cbfl, entry);
 }
@@ -141,7 +168,7 @@ void process_ack(Ale* ale,  ReturnData* rdata, pkt_t* pkt) {
     Entry entry = get_hash_value(H32(TCP(ack)), N32(IP(dst_ip)), N32(IP(src_ip)), H16(TCP(dst_port)), H16(TCP(src_port)) ); // Note the hash order is different.
     //printf("hashed value: %u \n", entry);
     int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
-    assert (index >=-2 && index <= (int)(ale->len -1));
+    assert (index >=-2 && index <= (int)(ale->len - 2));
     if (index >= -1) 
         get_rtt_from_index(ale, pkt, rdata, index); 
 }

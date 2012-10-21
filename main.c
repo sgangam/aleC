@@ -34,8 +34,6 @@ int open_tracefile(char* file);
 
 
 #define MAX_PKTS (sizeof(pkt_t))
-#define BUFSIZE	 1024
-#define STR_BUFLEN 1024
 
 
 /* 
@@ -45,26 +43,7 @@ int open_tracefile(char* file);
  * traces, identifies the flow the packets belong and calls
  * the handlepkt to compute per connection statistics. 
  */
-void printPacket(pkt_t* pkt, char* out_string) {
-    struct in_addr inaddr_src_ip, inaddr_dst_ip;
-    inaddr_src_ip.s_addr = N32(IP(src_ip))  ;
-    inaddr_dst_ip.s_addr = N32(IP(dst_ip)) ;
-    char str_src_ip[BUFSIZE];
-    char str_dst_ip[BUFSIZE];
-    memset(str_src_ip,'\0',STR_BUFLEN);
-    memset(str_dst_ip,'\0',STR_BUFLEN);
-    inet_ntop(AF_INET,& (inaddr_src_ip), str_src_ip, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET,& (inaddr_dst_ip), str_dst_ip, INET_ADDRSTRLEN);
-    uint16_t sport = H16(TCP(src_port));
-    uint16_t dport = H16(TCP(dst_port));
-    u_int32_t last = DAG2SEC(pkt->time);
-    u_int32_t last_us = DAG2USEC(pkt->time);
-    u_int32_t ack_no = H32(TCP(ack));
 
-    snprintf(out_string, STR_BUFLEN, "%.6f %s %s %u %u %u\n", last+(last_us/1000000.0), 
-            str_src_ip, str_dst_ip,
-            sport, dport, ack_no);
-}
 
 void processtrace()
 {
@@ -75,8 +54,8 @@ void processtrace()
 	err(EXIT_FAILURE, "readnextpkt");
 
     Ale ale;
-    ale_type type=U; float span_length=2000 ; 
-    u_int window_count = 97, no_of_counters = 20000;
+    ale_type type=U; double span_length=2000 ; 
+    u_int window_count = 97, no_of_counters = 40000;
     init_ale(&ale, type, span_length, window_count, no_of_counters);
     /* start reading the trace */
     while (trace != 0) {
@@ -85,13 +64,8 @@ void processtrace()
         }
         ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
         get_RTT_sample(&ale, &rdata, &pkt);
-        rdata.rtt_valid = 1;
-        if (rdata.rtt_valid == 1) {
-            char out_string[STR_BUFLEN];
-            memset(out_string,'\0',STR_BUFLEN);
-            printPacket(&pkt, out_string);
-            printf("%s", out_string);
-        }
+        if (rdata.rtt_valid == 1)
+            printPacketStdout(&pkt, rdata.rtt);
         trace = nextpkt(&pkt);
     }
     cleanup_ale(&ale);

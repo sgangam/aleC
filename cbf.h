@@ -1,14 +1,15 @@
 #include <assert.h>
+#include "hashfunctions.h"
 
-#define LSG_BITS(B) (((1U << 5U) - 1U) & B)
+#define LSG_BITS(B) (B & 0xf)
 #define MSG_BITS(B) (B >> 4)
 #define CBF_HASH_FUNCTIONS_COUNT 4
 
 //TODO fill below
-#define INC_LSB(B) (B)
-#define INC_MSB(B) (B)
-#define DCR_LSB(B) (B)
-#define DCR_MSB(B) (B)
+#define INC_LSB(B) ((B & 0xf0) | ((B & 0xf) + 1))
+#define DCR_LSB(B) ((B & 0xf0) | ((B & 0xf) - 1))
+#define INC_MSB(B) (((B & 0xf0) + 1) | (B & 0xf))
+#define DCR_MSB(B) (((B & 0xf0) - 1) | (B & 0xf))
 
 /*
  4 bit counters with indices on a 8 bit array.
@@ -52,8 +53,11 @@ void cleanup_cbf(CBF* cbf) {
 }
 
 u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index) {
-    //TODO
-    return 0;
+    u_int array[5];
+    array[0] = entry; array[1] = 0xdeadbeef; array[2] = 0xfeebdaed ; array[3] = entry ^ array[1] ; array[4] = entry ^ array[2];
+    //srand(hash_function_index); array[0] = entry ; array[2] = rand() ; array[3] = entry ^ rand() ; array[4] = entry ^ rand();
+    u_int hval = hashword(array, 5, 0);
+    return (hval % cbf->C);
 }
 
 void add_cbf_entry(CBF* cbf, Entry entry){
@@ -76,9 +80,9 @@ void remove_cbf_entry(CBF* cbf, Entry entry){
         assert (h >= 0 && h < cbf->C);
         u_int ai = h >> 1;
         if (h & 1U)
-            cbf->array[ai] = DCR_MSB(cbf->array[ai]);
+            cbf->array[ai] = DCR_MSB(cbf->array[ai]); // h is Odd : most significant nibble
         else
-            cbf->array[ai] = DCR_LSB(cbf->array[ai]);
+            cbf->array[ai] = DCR_LSB(cbf->array[ai]);// h is Even : least significant nibble
     }
 }
 

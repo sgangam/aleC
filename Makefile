@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -O3 -Wall -g -D_BSD_SOURCE
-PROGNAME= ale
-SRCS= tcpdump.c main.c readtraces.c  
+PROGNAME = ale
+SRCS = tcpdump.c main.c readtraces.c
 INCS =   main.h ale.h cbfList.h cbf.h pktHeaders.h readtraces.h tcpdump.h hashfunctions.h
 
 OBJS = ${SRCS:.c=.o}
@@ -9,8 +9,8 @@ OBJS = ${SRCS:.c=.o}
 all: $(OBJS)
 	gcc $(CFLAGS) -lm -lpcap -o $(PROGNAME) $(OBJS)
 
-readtraces.o ::
-	gcc $(CFLAGS) -D_BSD_SOURCE -c -o readtraces.o readtraces.c
+#readtraces.o ::
+#	gcc $(CFLAGS) -c -o readtraces.o readtraces.c
 
 
 $(OBJS):: $(INCS)
