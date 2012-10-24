@@ -124,7 +124,8 @@ int lookup_and_remove_cbf_list_entry(CBFList* cbfl, Entry e) {
     ListNode* curr = cbfl->head->next;
     u_int found = 0, index = -1;
     while (curr != cbfl->tail) {
-        found = lookup_and_remove_cbf_entry(&curr->cbf, e);
+        u_int del_entry = 1;
+        found = lookup_and_remove_cbf_entry(&curr->cbf, e, del_entry);
         if (found == 1)
             return index;
         index++;
