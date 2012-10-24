@@ -107,3 +107,7 @@ u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry entry, u_int del_entry){
     return 1; //found
 }
 
+void combine_cbf(CBF* cbf, CBF* cbf_next) {// append contents fo cbf to cbf_next
+//TODO
+    assert(0);
+}

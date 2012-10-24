@@ -59,7 +59,7 @@ void list_pop_back(CBFList* cbfl) {
 }
 
 void list_pop_index(CBFList* cbfl, u_int index) { // index 0 is the first element in the list
-    assert (index>=0 && index < cbfl->len - 1); // cbfl->len has 1 element more than reqd.
+    assert (index >= 0 && index < cbfl->len - 1); // cbfl->len has 1 element more. The current bucket with index -1.
     ListNode* curr = cbfl->head->next;
     u_int current_index = -1;
     while (curr != cbfl->tail) {
@@ -73,6 +73,22 @@ void list_pop_index(CBFList* cbfl, u_int index) { // index 0 is the first elemen
     }
     assert(0);
 }
+
+void list_combine_bucket(CBFList* cbfl, u_int index) { // add bloom filter contents of index into index + 1
+    assert (index >= 0 && index <= cbfl->len - 3); // cbfl->len has 1 element more. The current bucket with index -1.
+    ListNode* curr = cbfl->head->next;
+    u_int current_index = -1;
+    while (curr != cbfl->tail) {
+        if (index == current_index) {
+            combine_cbf(&curr->cbf, &curr->next->cbf); 
+            return;
+        }
+        current_index++;
+        curr = curr->next;
+    }
+    assert(0);
+}
+
 
 void append_empty_nodes_head(CBFList* cbfl, u_int len, u_int no_of_counters) {  // uses malloc to allocate memory
     int i;
@@ -138,9 +154,3 @@ void add_cbf_list_entry(CBFList* cbfl, Entry entry) {
     ListNode* first = cbfl->head->next;
     add_cbf_entry(&first->cbf, entry);
 }
-
-void list_combine_bucket(CBFList* cbfl, u_int index) { // add bloom filter contents of index into index + 1
-    //TODO
-    assert(0);
-}
-
