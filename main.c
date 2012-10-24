@@ -55,7 +55,7 @@ void processtrace()
 
     Ale ale;
     ale_type type=U; double span_length=2000 ; 
-    u_int window_count = 97, no_of_counters = 40000;
+    u_int window_count = 96, no_of_counters = 40000;
     init_ale(&ale, type, span_length, window_count, no_of_counters);
     /* start reading the trace */
     while (trace != 0) {

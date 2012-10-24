@@ -5,6 +5,10 @@
 #endif
 #define BUFSIZE	 1024
 #define STR_BUFLEN 1024
+#define MAX_EXP_GROUPS 30 // We do not anticipate more than 30 groups.
+
+//#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+//#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 void printPacket(pkt_t* pkt, char* out_string) {
     struct in_addr inaddr_src_ip, inaddr_dst_ip;
@@ -23,21 +27,40 @@ void printPacket(pkt_t* pkt, char* out_string) {
     u_int32_t ack_no = H32(TCP(ack));
 
     snprintf(out_string, STR_BUFLEN, "%.6f %s %s %u %u %u", last + (last_us/1000000.0), 
-            str_src_ip, str_dst_ip,
-            sport, dport, ack_no);
+             str_dst_ip, str_src_ip,
+            dport, sport, ack_no);
 }
 
-void printPacketStdout(pkt_t* pkt, double rtt){
+void printPacketStdout(pkt_t* pkt, double rtt) {
     char out_string[STR_BUFLEN];
     memset(out_string,'\0',STR_BUFLEN);
     printPacket(pkt, out_string);
     printf("%s %f\n", out_string, rtt);
 }
 
-enum _ale_type {
+typedef enum _ale_type {
     U, E
-};
-typedef enum _ale_type ale_type;
+} ale_type;
+
+typedef struct _ExpIndexState {
+    u_int min_bound;
+    u_int max_bound;
+    u_int min_offset;
+    u_int max_offset;
+    u_int group_id;
+} ExpIndexState;
+
+typedef struct _GroupState {
+    u_int no_of_groups;
+    u_int group_state_array[MAX_EXP_GROUPS];
+
+}GroupState ;
+
+typedef struct _ReturnData {
+    double rtt; //(in milli seconds)
+    u_int rtt_valid;
+} ReturnData;
+
 
 typedef struct _Ale {
     u_int len; //This includes the current cbf which is the first element of the list.
@@ -47,51 +70,112 @@ typedef struct _Ale {
     ale_type t; 
     CBFList cbfl;
     double ts; // The timestamp of the Ale structure. Points to the max timestamp value of any packet stored in the CBFlist.
+    //The following are required only by ALE-E
+    ExpIndexState* exp_index_state;
+    GroupState* group_state;
+    u_int time_bucket_state_counter;
 
 } Ale;
 
-typedef struct _ReturnData {
-    double rtt; //(in milli seconds)
-    u_int rtt_valid;
-} ReturnData;
+//ALE-E has groups of buckets with increasing size (exponentially doubling)
+//The number of buckets within a group are given by this function.
+// the return value must be greater than zero and group Id starts from 0.
+u_int  group_cardinality(u_int groupId) {
+    u_int retVal = 1 + groupId;
+    return retVal; 
+}
+//Additional initializations for ALE-E.
+void init_ale_e (Ale* ale) {
+    assert(ale->len > 0);
+    ale->time_bucket_state_counter = 0;
+    ale->exp_index_state = (ExpIndexState*) calloc(sizeof(ExpIndexState), ale->len);
+    ExpIndexState* exp_index_state = ale->exp_index_state;
+    ale->group_state = (GroupState*) malloc(sizeof(GroupState));
+    GroupState* group_state = ale->group_state;
 
-void init_ale(Ale* ale, ale_type t,  double span_length, u_int window_count, u_int no_of_counters) {
-    //printf("Ale length: %u\n", window_count);
+    u_int group_id = 0, min_bound = 0, max_bound = 1, min_offset = 1, max_offset = 1, i; 
+    u_int group_size = group_cardinality(group_id);
+
+    group_state->no_of_groups = 0;
+    group_state->group_state_array[group_state->no_of_groups] = (0 + group_size - 1);
+    group_state->no_of_groups++;
+
+    for (i = 0 ; i < ale->len ; i++) {
+        if (group_size == 0) {
+            group_id += 1;
+            group_size = group_cardinality(group_id);
+            group_state->group_state_array[group_state->no_of_groups] = (i + MIN(group_size, ale->len - i) - 1);
+            group_state->no_of_groups++;
+            max_offset = 1 << group_id;
+        }
+        exp_index_state->min_bound = min_bound; exp_index_state->max_bound = max_bound; 
+        exp_index_state->min_offset = min_offset; exp_index_state->max_offset = max_offset; exp_index_state->group_id = group_id;
+        min_offset = max_offset;
+        min_bound = max_bound;
+        max_bound += (1 << group_id);
+        group_size -= 1;
+    }
+    ale->w = ale->W*1.0/exp_index_state[ale->len - 1].max_bound;
+}
+
+void init_ale(Ale* ale, ale_type t,  double span_length, u_int bucket_count, u_int no_of_counters) {
+    //printf("Ale length: %u\n", bucket_count);
     ale->W = span_length ;
-    ale->len = window_count ;
+    ale->len = bucket_count ;
     ale->counters = no_of_counters;
     ale->t = t;
     ale->ts = 0;
+
+    create_cbf_list(&ale->cbfl, ale->len + 1, ale->counters) ;  // uses malloc to allocate memory.  use one more node in the list for the current bucket
+    assert(ale->len + 1 == list_get_size(&ale->cbfl));
+
     if (t == U)
         ale->w = ale->W*1.0/ale->len ;
-    else if (t == E) { //TODO
-        assert(0);
-    }
-
-    create_cbf_list(&ale->cbfl, ale->len, ale->counters) ;  // uses malloc to allocate memory
-    assert(ale->len == list_get_size(&ale->cbfl));
+    else if (t == E) 
+        init_ale_e(ale); 
 }
+
 
 void cleanup_ale(Ale* ale)
 {
     cleanup_cbf_list(&ale->cbfl);
-}
-
-void reset_ale(Ale* ale){
-    reset_cbf_list(&ale->cbfl);
+    if (ale->t == E) {
+        free(ale->exp_index_state);
+        free(ale->group_state);
+    }
 }
 
 u_int get_pop_index(Ale* ale) {
     if (ale->t == U)
-        return ale->len - 2 ;
+        return ale->len - 1 ; // the last bucket has index: ale->len - 1
     else if (ale->t == E){
-        assert(0);
-        return 0;
-    //TODO
+        u_int pop_group_index = 0, i;
+        for (i = 0; i < ale->len ; i++) {
+            if (ale->time_bucket_state_counter * (1 << i)) {
+                pop_group_index = i; //first get the group from which we want to pop a bucket
+                break;
+            }
+        }
+        ale->time_bucket_state_counter++;
+        if (ale->time_bucket_state_counter == (1 << ale->group_state->no_of_groups) - 1)
+            ale->time_bucket_state_counter = 0;
+        return ale->group_state->group_state_array[pop_group_index];
     }
     else
         assert(0);
 }
+void ale_pop_index(Ale* ale, u_int pop_index) {
+    assert(pop_index <= ale->len - 1 && pop_index >= 0);
+    if (pop_index == ale->len - 1) // the last bucket. ALE-E or ALE-U
+        list_pop_back(&ale->cbfl);
+    else { // ALE-E
+        assert(ale->t == E);
+        list_combine_bucket(&ale->cbfl, pop_index);// add bloom filter contents of pop_index to pop_index + 1
+        list_pop_index(&ale->cbfl, pop_index);
+    }
+    assert(ale->len + 1 == list_get_size(&ale->cbfl) + 1);
+}
+
 void update_cbflist(Ale* ale, pkt_t* pkt) {
     u_int32_t last = DAG2SEC(pkt->time);
     u_int32_t last_us = DAG2USEC(pkt->time);
@@ -102,17 +186,12 @@ void update_cbflist(Ale* ale, pkt_t* pkt) {
         return;
     }
     while (ts >= ale->ts + ale->w/1000.0) {
-        u_int index = get_pop_index(ale);
-        if (index == ale->len - 2) // optimizing common case.
-            list_pop_back(&ale->cbfl);
-        else
-            list_pop_index(&ale->cbfl, index);
-
+        u_int pop_index = get_pop_index(ale);
+        ale_pop_index(ale, pop_index);
         ale->ts = ale->ts + ((ale->w)/1000.0) ;
         append_empty_nodes_head(&ale->cbfl, 1, ale->counters);
-        assert(ale->len == list_get_size(&ale->cbfl));
+        assert(ale->len + 1 == list_get_size(&ale->cbfl));
     }
-    
 }
 
 void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
@@ -126,10 +205,9 @@ void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
         if (ale->t == U)
             rdata->rtt = (index + 0.5) * ale->w + ((ts - ale->ts)*1000);
         else if (ale->t == E) {
-            //TODO
-            assert(0);
-            double min =  0, max = 0;
-            rdata->rtt  = ((max + min)*0.5*ale->w) +  ((ts - ale->ts)*1000);
+            u_int min_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].min_offset);
+            u_int max_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].max_offset);
+            rdata->rtt  = ((max_bound + min_bound)*0.5*ale->w) +  ((ts - ale->ts)*1000);
         }
         else 
             assert(0);
@@ -159,7 +237,7 @@ void process_data(Ale* ale, pkt_t* pkt) {
     Entry entry = get_hash_value(expected_ack, N32(IP(src_ip)), N32(IP(dst_ip)), H16(TCP(src_port)), H16(TCP(dst_port)));
     //printf("expected_ack:%u , hashed value: %u \n",expected_ack, entry);
     int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
-    assert (index >=-2 && index <= (int)(ale->len - 2));
+    assert (index >=-2 && index <= (int)(ale->len - 1));
     if (index == -2)
         add_cbf_list_entry(&ale->cbfl, entry);
 }
@@ -168,7 +246,7 @@ void process_ack(Ale* ale,  ReturnData* rdata, pkt_t* pkt) {
     Entry entry = get_hash_value(H32(TCP(ack)), N32(IP(dst_ip)), N32(IP(src_ip)), H16(TCP(dst_port)), H16(TCP(src_port)) ); // Note the hash order is different.
     //printf("hashed value: %u \n", entry);
     int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
-    assert (index >=-2 && index <= (int)(ale->len - 2));
+    assert (index >=-2 && index <= (int)(ale->len - 1));
     if (index >= -1) 
         get_rtt_from_index(ale, pkt, rdata, index); 
 }

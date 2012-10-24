@@ -39,7 +39,7 @@ void create_cbf(CBF* cbf, u_int C) {
     cbf->array_count =  (C >> 1);
     cbf->C = cbf->array_count << 1;
     cbf->array = (uint8_t*) calloc( cbf->array_count, sizeof(uint8_t)); // each 8 byte entry has two counters
-    reset_cbf(cbf);
+    //reset_cbf(cbf); //calloc initializes the counters to zero.
 }
 
 void print_cbf_array(CBF* cbf) {
@@ -96,13 +96,12 @@ u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry entry, u_int del_entry){
         for (i = 0; i < cbf->hash_count ; i++) {
             u_int h = hash_indices[i];
             u_int ai = h >> 1;
-//            printf ( "h: %u, h&1U:%u  -- %u:%u\n",h, (h & 1U), MSG_BITS(cbf->array[ai]), LSG_BITS(cbf->array[ai]) );
+            //printf ( "h: %u, h&1U:%u  -- %u:%u\n",h, (h & 1U), MSG_BITS(cbf->array[ai]), LSG_BITS(cbf->array[ai]) );
             if ((h & 1U) && MSG_BITS(cbf->array[ai]) != 0)
                 cbf->array[ai] = DCR_MSB(cbf->array[ai]); // h is Odd : most significant nibble
             else if (!(h & 1U) && LSG_BITS(cbf->array[ai]) != 0)
                 cbf->array[ai] = DCR_LSB(cbf->array[ai]) ;// h is Even : least significant nibble
- //           else
-  //              assert(0); 
+ //         else    assert(0); // Since we have poor hash functions, this assertion fails. TODO: we need better hash functions which are faster.
         }
     }
     return 1; //found

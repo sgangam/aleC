@@ -138,3 +138,9 @@ void add_cbf_list_entry(CBFList* cbfl, Entry entry) {
     ListNode* first = cbfl->head->next;
     add_cbf_entry(&first->cbf, entry);
 }
+
+void list_combine_bucket(CBFList* cbfl, u_int index) { // add bloom filter contents of index into index + 1
+    //TODO
+    assert(0);
+}
+
