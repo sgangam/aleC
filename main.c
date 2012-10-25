@@ -51,31 +51,31 @@ void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
     u_int bucket_count = max_bucket_count;
     u_int i = 0;
     if (ale_method_count == 1) {
-        init_ale(ale_array, type, span_length, bucket_count, no_of_counters);
+        init_ale(&ale_array[0], type, span_length, bucket_count, no_of_counters);
         return;
     }
 
     for (i = 0; i < ale_method_count - 1; i++) {
-        init_ale(ale_array + i, type, span_length, bucket_count, no_of_counters);
+        init_ale(&ale_array[i], type, span_length, bucket_count, no_of_counters);
         bucket_count = bucket_count/2.0;
     }
     type = E;
-    init_ale(ale_array + ale_method_count - 1, type, span_length, min_bucket_count, no_of_counters);
+    init_ale(&ale_array[ale_method_count - 1], type, span_length, min_bucket_count, no_of_counters);
 }
 
 void process_ale_array_packet(Ale* ale_array, u_int ale_method_count, ReturnData* rdata, pkt_t* pkt){
     u_int i = 0;
     for (i = 0; i < ale_method_count; i++) {
-        get_RTT_sample(ale_array + i, rdata, pkt);
+        get_RTT_sample(&ale_array[i], rdata, pkt);
         if (rdata->rtt_valid == 1)
-            printPacketStdout(ale_array + i, pkt, rdata->rtt);
+            printPacketStdout(&ale_array[i], pkt, rdata->rtt);
     }
 }
 
 void cleanup_ale_array(Ale* ale_array, u_int ale_method_count){
     u_int i = 0;
     for (i = 0; i < ale_method_count; i++) {
-        cleanup_ale(ale_array + i);
+        cleanup_ale(&ale_array[i]);
     }
 }
 
