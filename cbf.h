@@ -79,8 +79,8 @@ void add_cbf_entry(CBF* cbf, Entry entry){
             cbf->array[ai] = INC_MSB(cbf->array[ai]);
         else if (LSG_BITS(cbf->array[ai]) != 0xf)
             cbf->array[ai] = INC_LSB(cbf->array[ai]);
-        else
-            fprintf(stderr,"Insufficient counters\n");
+        //else
+         //   fprintf(stderr,"Insufficient counters\n");
 
     }
 }

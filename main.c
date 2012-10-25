@@ -45,13 +45,17 @@ int open_tracefile(char* file);
  */
 
 void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
-    ale_type type=U; double span_length=2000 ; 
-    u_int window_count = 96, no_of_counters = 40000;
+    ale_type type = U; double span_length=2000 ;
+    u_int no_of_counters = 40000;// for bloom filters
+    u_int min_bucket_count = 12, max_bucket_count = 96;
+    u_int bucket_count = max_bucket_count;
     u_int i = 0;
-    for (i = 0; i < ale_method_count; i++) {
-        init_ale(ale_array + i, type, span_length, window_count, no_of_counters);
-        window_count = window_count/2.0;
+    for (i = 0; i < ale_method_count - 1; i++) {
+        init_ale(ale_array + i, type, span_length, bucket_count, no_of_counters);
+        bucket_count = bucket_count/2.0;
     }
+    type = E;
+    init_ale(ale_array + ale_method_count - 1, type, span_length, min_bucket_count, no_of_counters);
 }
 
 void process_ale_array_packet(Ale* ale_array, u_int ale_method_count, ReturnData* rdata, pkt_t* pkt){
@@ -78,7 +82,7 @@ void processtrace()
     if (trace < 0)
 	err(EXIT_FAILURE, "readnextpkt");
 
-    u_int ale_method_count = 4;
+    u_int ale_method_count = 5;
     Ale ale_array[ale_method_count];
     initialize_ale_array(ale_array, ale_method_count);
     /* start reading the trace */
