@@ -2,6 +2,8 @@
 #include "hashfunctions.h"
 
 #define CBF_HASH_FUNCTIONS_COUNT 5
+#define PRIMES_PER_HASH 4
+#define PRIME_SIZE 30
 
 #define LSG_BITS(B) (B & 0xf)
 #define MSG_BITS(B) (B >> 4)
@@ -12,6 +14,9 @@
 #define INC_MSB(B) (  (((B & 0xf0) + 0x10) & 0xf0) | (B & 0x0f)  )
 #define DCR_MSB(B) (  (((B & 0xf0) - 0x10) & 0xf0) | (B & 0x0f)  )
 
+u_int prime_array [PRIME_SIZE] = {4151325961, 3533412479, 2918217551, 4279875371, 3705079459, 2728895899, 1017668207, 413158523, 1436135293, 520951843,
+                        71480063, 3482876333, 4040666039, 3996428773, 4025176643, 4053938279, 4016331647, 4242190873, 4257712259, 2544507943, 
+                        2285248019, 2311109513, 1948154267, 181328093, 1488884053, 1637064479, 1788027757, 2380165901, 2622509909, 2707161473 };
 /*
  4 bit counters with indices on a 8 bit array.
   MSB LSB
@@ -53,19 +58,21 @@ void cleanup_cbf(CBF* cbf) {
 }
 
 u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index) {
-    u_int array[5];
-    u_int index_factor = hash_function_index*1117;//smallest 4 digit prime number
-    index_factor <<= hash_function_index;
-    array[0] = entry; array[1] = 0xdeadbeef ^ index_factor; array[2] = 0xfeebdaed  ^ index_factor; array[3] = entry ^ array[1] ; array[4] = entry ^ array[2];
-    //srand(index_factor); array[0] = entry ; array[2] = rand() ; array[3] = entry ^ rand() ; array[4] = entry ^ rand();
-    u_int hval = hashword(array, 5, 0);
+    assert(PRIME_SIZE >= hash_function_index*PRIMES_PER_HASH);
+    u_int array[PRIMES_PER_HASH + 1];
+    int i = 0;
+    for (i = 0; i < PRIMES_PER_HASH; i++) {
+        array[i] = prime_array[hash_function_index*PRIMES_PER_HASH + i];
+    } 
+    array[PRIMES_PER_HASH] = entry; 
+    u_int hval = hashword(array, PRIMES_PER_HASH + 1, 0xaeeaaeeaa);
     return (hval % cbf->C);
 }
 
 void add_cbf_entry(CBF* cbf, Entry entry){
     int i;
     for (i = 0; i < cbf->hash_count ; i++){
-        u_int h = get_hash_index(cbf, entry, i);    
+        u_int h = get_hash_index(cbf, entry, i); 
         u_int ai = h >> 1; //divide by 2.
         assert (h >= 0 && h < cbf->C);
         if ((h & 1U) && MSG_BITS(cbf->array[ai]) != 0xf )
@@ -101,7 +108,7 @@ u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry entry, u_int del_entry){
                 cbf->array[ai] = DCR_MSB(cbf->array[ai]); // h is Odd : most significant nibble
             else if (!(h & 1U) && LSG_BITS(cbf->array[ai]) != 0)
                 cbf->array[ai] = DCR_LSB(cbf->array[ai]) ;// h is Even : least significant nibble
- //         else    assert(0); // Since we have poor hash functions, this assertion fails. TODO: we need better hash functions which are faster.
+            //else    assert(0); // Since we have poor hash functions, this assertion fails. TODO: we need better hash functions which are faster.
         }
     }
     return 1; //found
