@@ -50,6 +50,11 @@ void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
     u_int min_bucket_count = 12, max_bucket_count = 96;
     u_int bucket_count = max_bucket_count;
     u_int i = 0;
+    if (ale_method_count == 1) {
+        init_ale(ale_array, type, span_length, bucket_count, no_of_counters);
+        return;
+    }
+
     for (i = 0; i < ale_method_count - 1; i++) {
         init_ale(ale_array + i, type, span_length, bucket_count, no_of_counters);
         bucket_count = bucket_count/2.0;

@@ -178,7 +178,7 @@ void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
             rdata->rtt = (index + 0.5) * ale->w + ((ts - ale->ts)*1000);
         else if (ale->t == E) {
             u_int min_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].min_offset);
-            u_int max_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].max_offset);
+            u_int max_bound = ale->exp_index_state[index].max_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].max_offset);
             rdata->rtt  = ((max_bound + min_bound)*0.5*ale->w) +  ((ts - ale->ts)*1000);
         }
         else 
