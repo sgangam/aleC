@@ -75,7 +75,7 @@ void list_pop_index(CBFList* cbfl, u_int index) { // index 0 is the first elemen
 }
 
 void list_combine_bucket(CBFList* cbfl, u_int index) { // add bloom filter contents of index into index + 1
-    assert (index >= 0 && index <= cbfl->len - 3); // cbfl->len has 1 element more. The current bucket with index -1.
+    assert (index >= 0 && index <= cbfl->len - 3); // cbfl->len has 1 element more. The current bucket with index: -1. Last bucket (index: cbfl->len - 2)cannot be combined and shouldnt be here
     ListNode* curr = cbfl->head->next;
     u_int current_index = -1;
     while (curr != cbfl->tail) {

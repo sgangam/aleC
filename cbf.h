@@ -29,7 +29,7 @@ u_int prime_array [PRIME_SIZE] = {4151325961, 3533412479, 2918217551, 4279875371
 typedef uint32_t Entry ;
 
 typedef struct _CBF{
-    u_int C; //counter Size
+    u_int C; //counter Size, number of 4 bit counters.
     uint8_t* array;
     u_int array_count;
     u_int hash_count;
@@ -65,7 +65,7 @@ u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index) {
         array[i] = prime_array[hash_function_index*PRIMES_PER_HASH + i];
     } 
     array[PRIMES_PER_HASH] = entry; 
-    u_int hval = hashword(array, PRIMES_PER_HASH + 1, 0xaeeaaeeaa);
+    u_int hval = hashword(array, PRIMES_PER_HASH + 1, 0xaeeaaeea);
     return (hval % cbf->C);
 }
 
@@ -115,6 +115,12 @@ u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry entry, u_int del_entry){
 }
 
 void combine_cbf(CBF* cbf, CBF* cbf_next) {// append contents fo cbf to cbf_next
-//TODO
-    assert(0);
+    assert(cbf->array_count == cbf_next->array_count);
+    int i = 0;
+    for (i = 0; i < cbf->array_count; i++) {
+        u_int msb = LSG_BITS(cbf->array[i]) + LSG_BITS(cbf_next->array[i]);
+        u_int lsb = MSG_BITS(cbf->array[i]) + MSG_BITS(cbf_next->array[i]);
+        if (msb > 0xff) msb = 0xff; if (lsb > 0xff) lsb = 0xff;
+        cbf_next->array[i] = (msb << 4) | lsb;
+    }
 }

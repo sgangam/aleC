@@ -44,6 +44,31 @@ int open_tracefile(char* file);
  * the handlepkt to compute per connection statistics. 
  */
 
+void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
+    ale_type type=U; double span_length=2000 ; 
+    u_int window_count = 96, no_of_counters = 40000;
+    u_int i = 0;
+    for (i = 0; i < ale_method_count; i++) {
+        init_ale(ale_array + i, type, span_length, window_count, no_of_counters);
+        window_count = window_count/2.0;
+    }
+}
+
+void process_ale_array_packet(Ale* ale_array, u_int ale_method_count, ReturnData* rdata, pkt_t* pkt){
+    u_int i = 0;
+    for (i = 0; i < ale_method_count; i++) {
+        get_RTT_sample(ale_array + i, rdata, pkt);
+        if (rdata->rtt_valid == 1)
+            printPacketStdout(ale_array + i, pkt, rdata->rtt);
+    }
+}
+
+void cleanup_ale_array(Ale* ale_array, u_int ale_method_count){
+    u_int i = 0;
+    for (i = 0; i < ale_method_count; i++) {
+        cleanup_ale(ale_array + i);
+    }
+}
 
 void processtrace()
 {
@@ -53,22 +78,19 @@ void processtrace()
     if (trace < 0)
 	err(EXIT_FAILURE, "readnextpkt");
 
-    Ale ale;
-    ale_type type=U; double span_length=2000 ; 
-    u_int window_count = 96, no_of_counters = 40000;
-    init_ale(&ale, type, span_length, window_count, no_of_counters);
+    u_int ale_method_count = 4;
+    Ale ale_array[ale_method_count];
+    initialize_ale_array(ale_array, ale_method_count);
     /* start reading the trace */
     while (trace != 0) {
 	if (pkt.ih.proto != 6) {
             continue;
         }
         ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
-        get_RTT_sample(&ale, &rdata, &pkt);
-        if (rdata.rtt_valid == 1)
-            printPacketStdout(&pkt, rdata.rtt);
+        process_ale_array_packet(ale_array, ale_method_count, &rdata, &pkt);
         trace = nextpkt(&pkt);
     }
-    cleanup_ale(&ale);
+    cleanup_ale_array(ale_array, ale_method_count);
 }
 
 /* 

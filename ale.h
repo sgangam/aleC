@@ -10,34 +10,6 @@
 //#define MAX(x, y) (((x) > (y)) ? (x) : (y))
 //#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-void printPacket(pkt_t* pkt, char* out_string) {
-    struct in_addr inaddr_src_ip, inaddr_dst_ip;
-    inaddr_src_ip.s_addr = N32(IP(src_ip))  ;
-    inaddr_dst_ip.s_addr = N32(IP(dst_ip)) ;
-    char str_src_ip[BUFSIZE];
-    char str_dst_ip[BUFSIZE];
-    memset(str_src_ip,'\0',STR_BUFLEN);
-    memset(str_dst_ip,'\0',STR_BUFLEN);
-    inet_ntop(AF_INET,& (inaddr_src_ip), str_src_ip, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET,& (inaddr_dst_ip), str_dst_ip, INET_ADDRSTRLEN);
-    uint16_t sport = H16(TCP(src_port));
-    uint16_t dport = H16(TCP(dst_port));
-    u_int32_t last = DAG2SEC(pkt->time);
-    u_int32_t last_us = DAG2USEC(pkt->time);
-    u_int32_t ack_no = H32(TCP(ack));
-
-    snprintf(out_string, STR_BUFLEN, "%.6f %s %s %u %u %u", last + (last_us/1000000.0), 
-             str_dst_ip, str_src_ip,
-            dport, sport, ack_no);
-}
-
-void printPacketStdout(pkt_t* pkt, double rtt) {
-    char out_string[STR_BUFLEN];
-    memset(out_string,'\0',STR_BUFLEN);
-    printPacket(pkt, out_string);
-    printf("%s %f\n", out_string, rtt);
-}
-
 typedef enum _ale_type {
     U, E
 } ale_type;
@@ -255,4 +227,37 @@ void get_RTT_sample(Ale* ale, ReturnData* rdata, pkt_t* pkt) {
     update_cbflist(ale, pkt); // Check if we have to push some cbf's and add new empty ones.
     process_data(ale, pkt);
     process_ack(ale, rdata, pkt);
+}
+
+void printPacket(pkt_t* pkt, char* out_string) {
+    struct in_addr inaddr_src_ip, inaddr_dst_ip;
+    inaddr_src_ip.s_addr = N32(IP(src_ip))  ;
+    inaddr_dst_ip.s_addr = N32(IP(dst_ip)) ;
+    char str_src_ip[BUFSIZE];
+    char str_dst_ip[BUFSIZE];
+    memset(str_src_ip,'\0',STR_BUFLEN);
+    memset(str_dst_ip,'\0',STR_BUFLEN);
+    inet_ntop(AF_INET,& (inaddr_src_ip), str_src_ip, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET,& (inaddr_dst_ip), str_dst_ip, INET_ADDRSTRLEN);
+    uint16_t sport = H16(TCP(src_port));
+    uint16_t dport = H16(TCP(dst_port));
+    u_int32_t last = DAG2SEC(pkt->time);
+    u_int32_t last_us = DAG2USEC(pkt->time);
+    u_int32_t ack_no = H32(TCP(ack));
+
+    snprintf(out_string, STR_BUFLEN, "%.6f %s %s %u %u %u", last + (last_us/1000000.0), 
+             str_dst_ip, str_src_ip,
+            dport, sport, ack_no);
+}
+
+void printPacketStdout(Ale* ale, pkt_t* pkt, double rtt) {
+    char out_string[STR_BUFLEN];
+    memset(out_string,'\0',STR_BUFLEN);
+    printPacket(pkt, out_string);
+    char ale_type[5]; ale_type[1] = '\0';
+    if (ale->t == U)
+        ale_type[0] = 'U'; 
+    else if (ale->t == E)
+        ale_type[0] = 'E';
+    printf("%s %f %s(%d)\n", out_string, rtt, ale_type, ale->len);
 }
