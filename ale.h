@@ -61,7 +61,6 @@ void init_ale_e (Ale* ale) {
     assert(ale->len > 0);
     ale->time_bucket_state_counter = 0;
     ale->exp_index_state = (ExpIndexState*) calloc(sizeof(ExpIndexState), ale->len);
-    ExpIndexState* exp_index_state = ale->exp_index_state;
     ale->group_state = (GroupState*) malloc(sizeof(GroupState));
     GroupState* group_state = ale->group_state;
 
@@ -80,14 +79,15 @@ void init_ale_e (Ale* ale) {
             group_state->no_of_groups++;
             max_offset = 1 << group_id;
         }
-        exp_index_state->min_bound = min_bound; exp_index_state->max_bound = max_bound; 
-        exp_index_state->min_offset = min_offset; exp_index_state->max_offset = max_offset; exp_index_state->group_id = group_id;
+        ale->exp_index_state[i].min_bound = min_bound; ale->exp_index_state[i].max_bound = max_bound; 
+        ale->exp_index_state[i].min_offset = min_offset; ale->exp_index_state[i].max_offset = max_offset; ale->exp_index_state[i].group_id = group_id;
         min_offset = max_offset;
         min_bound = max_bound;
         max_bound += (1 << group_id);
         group_size -= 1;
     }
-    ale->w = ale->W*1.0/exp_index_state[ale->len - 1].max_bound;
+    ale->w = ale->W*1.0/ale->exp_index_state[ale->len - 1].max_bound;
+    //printf ("ALE-E ale->w:%f\n",ale->w);
 }
 
 void init_ale(Ale* ale, ale_type t,  double span_length, u_int bucket_count, u_int no_of_counters) {
@@ -123,7 +123,7 @@ u_int get_pop_index(Ale* ale) {
     else if (ale->t == E){
         u_int pop_group_index = 0, i;
         for (i = 0; i < ale->len ; i++) {
-            if (ale->time_bucket_state_counter * (1 << i)) {
+            if (ale->time_bucket_state_counter & (1 << i)) {
                 pop_group_index = i; //first get the group from which we want to pop a bucket
                 break;
             }
