@@ -53,7 +53,9 @@ typedef struct _Ale {
 //The number of buckets within a group are given by this function.
 // the return value must be greater than zero and group Id starts from 0.
 u_int  group_cardinality(u_int groupId) {
-    u_int retVal = 1 + groupId;
+    //u_int retVal = 1 + groupId;
+    u_int retVal = 1 + (u_int)(groupId/2);
+    assert(retVal > 0);
     return retVal; 
 }
 //Additional initializations for ALE-E.
