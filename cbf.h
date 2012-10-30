@@ -1,7 +1,7 @@
 #include <assert.h>
 #include "hashfunctions.h"
 
-#define CBF_HASH_FUNCTIONS_COUNT 5
+#define CBF_HASH_FUNCTIONS_COUNT 6
 #define PRIMES_PER_HASH 4
 #define PRIME_SIZE 30
 

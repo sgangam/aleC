@@ -52,11 +52,11 @@ typedef struct _Ale {
 //ALE-E has groups of buckets with increasing size (exponentially doubling)
 //The number of buckets within a group are given by this function.
 // the return value must be greater than zero and group Id starts from 0.
-u_int  group_cardinality(u_int groupId) {
+u_int  group_cardinality(u_int group_id) {
     //u_int retVal = 1 + (u_int)(groupId/2);
-    u_int retVal = 1 + groupId;
-    assert(retVal > 0);
-    return retVal; 
+    u_int ret_val = 1 + group_id;
+    assert(ret_val > 0); // Make sure this assertion holds for any function used.
+    return ret_val; 
 }
 //Additional initializations for ALE-E.
 void init_ale_e (Ale* ale) {
@@ -75,12 +75,13 @@ void init_ale_e (Ale* ale) {
 
     for (i = 0 ; i < ale->len ; i++) {
         if (group_size == 0) {
-            group_id += 1;
+            group_id++;
             group_size = group_cardinality(group_id);
             group_state->group_state_array[group_state->no_of_groups] = (i + MIN(group_size, ale->len - i) - 1);
             group_state->no_of_groups++;
             max_offset = 1 << group_id;
         }
+        //printf(" minBound: %u %u : offset: %u %u, groupId:%u\n", min_bound, max_bound, min_offset, max_offset, group_id);
         ale->exp_index_state[i].min_bound = min_bound; ale->exp_index_state[i].max_bound = max_bound; 
         ale->exp_index_state[i].min_offset = min_offset; ale->exp_index_state[i].max_offset = max_offset; ale->exp_index_state[i].group_id = group_id;
         min_offset = max_offset;
@@ -89,6 +90,7 @@ void init_ale_e (Ale* ale) {
         group_size -= 1;
     }
     ale->w = ale->W*1.0/ale->exp_index_state[ale->len - 1].max_bound;
+    //for (i = 0; i < ale->group_state->no_of_groups; i++) printf (" -- %u ", ale->group_state->group_state_array[i]);
     //printf ("ALE-E ale->w:%f\n",ale->w);
 }
 
@@ -122,7 +124,7 @@ void cleanup_ale(Ale* ale)
 u_int get_pop_index(Ale* ale) {
     if (ale->t == U)
         return ale->len - 1 ; // the last bucket has index: ale->len - 1
-    else if (ale->t == E){
+    else if (ale->t == E) {
         u_int pop_group_index = 0, i;
         for (i = 0; i < ale->len ; i++) {
             if (ale->time_bucket_state_counter & (1 << i)) {
@@ -133,6 +135,7 @@ u_int get_pop_index(Ale* ale) {
         ale->time_bucket_state_counter++;
         if (ale->time_bucket_state_counter == (1 << ale->group_state->no_of_groups) - 1)
             ale->time_bucket_state_counter = 0;
+        //printf("Popping %u\n", ale->group_state->group_state_array[pop_group_index]);
         return ale->group_state->group_state_array[pop_group_index];
     }
     else
@@ -159,6 +162,11 @@ void update_cbflist(Ale* ale, pkt_t* pkt) {
         ale->ts = ts;
         return;
     }
+    if (ts >= ale->ts +  ((ale->w)/1000.0) + (ale->W/1000.0) ) {
+        reset_cbf_list(&ale->cbfl);
+        ale->ts = ts;
+        return;
+    }
     while (ts >= ale->ts + ale->w/1000.0) {
         u_int pop_index = get_pop_index(ale);
         ale_pop_index(ale, pop_index);
@@ -181,6 +189,7 @@ void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
         if (ale->t == U)
             rdata->rtt = (index + 0.5) * ale->w + ((ts - ale->ts)*1000);
         else if (ale->t == E) {
+            //printf("DEBUG: %u %u\n", ale->time_bucket_state_counter, index);
             u_int min_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].min_offset);
             u_int max_bound = ale->exp_index_state[index].max_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].max_offset);
             rdata->rtt  = ((max_bound + min_bound)*0.5*ale->w) +  ((ts - ale->ts)*1000);
