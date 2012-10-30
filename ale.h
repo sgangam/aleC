@@ -46,6 +46,7 @@ typedef struct _Ale {
     ExpIndexState* exp_index_state;
     GroupState* group_state;
     u_int time_bucket_state_counter;
+    u_int time_bucket_offset_counter;
 
 } Ale;
 
@@ -61,7 +62,8 @@ u_int  group_cardinality(u_int group_id) {
 //Additional initializations for ALE-E.
 void init_ale_e (Ale* ale) {
     assert(ale->len > 0);
-    ale->time_bucket_state_counter = 0;
+    ale->time_bucket_state_counter = 1;
+    ale->time_bucket_offset_counter = 0;
     ale->exp_index_state = (ExpIndexState*) calloc(sizeof(ExpIndexState), ale->len);
     ale->group_state = (GroupState*) malloc(sizeof(GroupState));
     GroupState* group_state = ale->group_state;
@@ -133,8 +135,12 @@ u_int get_pop_index(Ale* ale) {
             }
         }
         ale->time_bucket_state_counter++;
-        if (ale->time_bucket_state_counter == (1 << ale->group_state->no_of_groups) - 1)
-            ale->time_bucket_state_counter = 0;
+        ale->time_bucket_offset_counter++;
+
+        if (ale->time_bucket_state_counter == (1 << ale->group_state->no_of_groups) - 1) {
+            ale->time_bucket_state_counter = 1;
+            ale->time_bucket_offset_counter = 0;
+        }
         //printf("Popping %u\n", ale->group_state->group_state_array[pop_group_index]);
         return ale->group_state->group_state_array[pop_group_index];
     }
@@ -190,8 +196,8 @@ void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
             rdata->rtt = (index + 0.5) * ale->w + ((ts - ale->ts)*1000);
         else if (ale->t == E) {
             //printf("DEBUG: %u %u\n", ale->time_bucket_state_counter, index);
-            u_int min_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].min_offset);
-            u_int max_bound = ale->exp_index_state[index].max_bound + (ale->time_bucket_state_counter % ale->exp_index_state[index].max_offset);
+            u_int min_bound = ale->exp_index_state[index].min_bound + (ale->time_bucket_offset_counter % ale->exp_index_state[index].min_offset);
+            u_int max_bound = ale->exp_index_state[index].max_bound + (ale->time_bucket_offset_counter % ale->exp_index_state[index].max_offset);
             rdata->rtt  = ((max_bound + min_bound)*0.5*ale->w) +  ((ts - ale->ts)*1000);
         }
         else 

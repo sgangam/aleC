@@ -1,8 +1,8 @@
 #include <assert.h>
 #include "hashfunctions.h"
 
-#define CBF_HASH_FUNCTIONS_COUNT 6
-#define PRIMES_PER_HASH 4
+#define CBF_HASH_FUNCTIONS_COUNT 5
+#define PRIMES_PER_HASH 5
 #define PRIME_SIZE 30
 
 #define LSG_BITS(B) (B & 0xf)
@@ -57,7 +57,7 @@ void cleanup_cbf(CBF* cbf) {
     free(cbf->array) ;
 }
 
-u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index) {
+u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index, u_int prev_hash) {
     assert(PRIME_SIZE >= hash_function_index*PRIMES_PER_HASH);
     u_int array[PRIMES_PER_HASH + 1];
     int i = 0;
@@ -65,14 +65,16 @@ u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index) {
         array[i] = prime_array[hash_function_index*PRIMES_PER_HASH + i];
     } 
     array[PRIMES_PER_HASH] = entry; 
-    u_int hval = hashword(array, PRIMES_PER_HASH + 1, 0xaeeaaeea);
+    u_int hval = hashword(array, PRIMES_PER_HASH + 1, prev_hash);
     return (hval % cbf->C);
 }
 
 void add_cbf_entry(CBF* cbf, Entry entry){
     int i;
+    u_int prev_hash = 0xaeeaaeea;
     for (i = 0; i < cbf->hash_count ; i++){
-        u_int h = get_hash_index(cbf, entry, i); 
+        u_int h = get_hash_index(cbf, entry, i, prev_hash); 
+        prev_hash = h;
         u_int ai = h >> 1; //divide by 2.
         assert (h >= 0 && h < cbf->C);
         if ((h & 1U) && MSG_BITS(cbf->array[ai]) != 0xf )
@@ -88,8 +90,10 @@ void add_cbf_entry(CBF* cbf, Entry entry){
 u_int lookup_and_remove_cbf_entry(CBF* cbf, Entry entry, u_int del_entry){
     int i;
     u_int hash_indices[cbf->hash_count];
+    u_int prev_hash = 0xaeeaaeea;
     for (i = 0; i < cbf->hash_count ; i++) {
-        u_int h = get_hash_index(cbf, entry, i);    
+        u_int h = get_hash_index(cbf, entry, i, prev_hash);    
+        prev_hash = h;
         assert (h >= 0 && h < cbf->C);
         hash_indices[i] = h;
         u_int ai = h >> 1;

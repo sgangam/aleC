@@ -46,7 +46,7 @@ int open_tracefile(char* file);
 
 void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
     ale_type type = U; double span_length = 2000 ;
-    u_int no_of_counters = 40000;// for bloom filters
+    u_int no_of_counters = 30000;// for bloom filters
     //u_int min_bucket_count = 12
     u_int max_bucket_count = 96;
     u_int ale_e_min_bucket_count = 12;
