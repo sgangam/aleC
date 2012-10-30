@@ -45,11 +45,11 @@ int open_tracefile(char* file);
  */
 
 void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
-    ale_type type = U; double span_length=2000 ;
-    u_int no_of_counters = 60000;// for bloom filters
+    ale_type type = U; double span_length = 2000 ;
+    u_int no_of_counters = 30000;// for bloom filters
     //u_int min_bucket_count = 12
     u_int max_bucket_count = 96;
-    u_int ale_e_min_bucket_count = 16;
+    u_int ale_e_min_bucket_count = 12;
     u_int bucket_count = max_bucket_count;
     u_int i = 0;
     if (ale_method_count == 1) {
@@ -67,8 +67,9 @@ void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
 
 void process_ale_array_packet(Ale* ale_array, u_int ale_method_count, pkt_t* pkt){
     u_int i = 0;
-    ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
+    ReturnData rdata;  //initialize
     for (i = 0; i < ale_method_count; i++) {
+        rdata.rtt_valid = 0; rdata.rtt = 0;
         get_RTT_sample(&ale_array[i], &rdata, pkt);
         if (rdata.rtt_valid == 1)
             printPacketStdout(&ale_array[i], pkt, rdata.rtt);
