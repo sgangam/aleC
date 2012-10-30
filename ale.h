@@ -53,8 +53,8 @@ typedef struct _Ale {
 //The number of buckets within a group are given by this function.
 // the return value must be greater than zero and group Id starts from 0.
 u_int  group_cardinality(u_int groupId) {
-    //u_int retVal = 1 + groupId;
-    u_int retVal = 1 + (u_int)(groupId/2);
+    //u_int retVal = 1 + (u_int)(groupId/2);
+    u_int retVal = 1 + groupId;
     assert(retVal > 0);
     return retVal; 
 }
@@ -172,10 +172,12 @@ void get_rtt_from_index(Ale* ale, pkt_t* pkt, ReturnData* rdata, u_int index) {
     u_int32_t last = DAG2SEC(pkt->time);
     u_int32_t last_us = DAG2USEC(pkt->time);
     double ts = last + (last_us/1000000.0);
-    rdata->rtt_valid = 1;
-    if (index == -1)
+    if (index == -1) {
+        rdata->rtt_valid = 1;
         rdata->rtt = (ts - ale->ts)*1000/2.0 ;// Latency in milliseconds (Actually it is a+b/2  - b = a-b/ = a-b/22)
+    }
     else if (index >= 0) {
+        rdata->rtt_valid = 1;
         if (ale->t == U)
             rdata->rtt = (index + 0.5) * ale->w + ((ts - ale->ts)*1000);
         else if (ale->t == E) {
@@ -221,6 +223,7 @@ void process_ack(Ale* ale,  ReturnData* rdata, pkt_t* pkt) {
     //printf("hashed value: %u \n", entry);
     int index = lookup_and_remove_cbf_list_entry(&ale->cbfl, entry);
     assert (index >=-2 && index <= (int)(ale->len - 1));
+    rdata->rtt_valid = 0;
     if (index >= -1) 
         get_rtt_from_index(ale, pkt, rdata, index); 
 }

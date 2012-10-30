@@ -46,8 +46,10 @@ int open_tracefile(char* file);
 
 void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
     ale_type type = U; double span_length=2000 ;
-    u_int no_of_counters = 30000;// for bloom filters
-    u_int min_bucket_count = 12, max_bucket_count = 96;
+    u_int no_of_counters = 60000;// for bloom filters
+    //u_int min_bucket_count = 12
+    u_int max_bucket_count = 96;
+    u_int ale_e_min_bucket_count = 16;
     u_int bucket_count = max_bucket_count;
     u_int i = 0;
     if (ale_method_count == 1) {
@@ -60,15 +62,16 @@ void initialize_ale_array(Ale* ale_array, u_int ale_method_count) {
         bucket_count = bucket_count/2.0;
     }
     type = E;
-    init_ale(&ale_array[ale_method_count - 1], type, span_length, min_bucket_count, no_of_counters);
+    init_ale(&ale_array[ale_method_count - 1], type, span_length, ale_e_min_bucket_count, no_of_counters);
 }
 
-void process_ale_array_packet(Ale* ale_array, u_int ale_method_count, ReturnData* rdata, pkt_t* pkt){
+void process_ale_array_packet(Ale* ale_array, u_int ale_method_count, pkt_t* pkt){
     u_int i = 0;
+    ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
     for (i = 0; i < ale_method_count; i++) {
-        get_RTT_sample(&ale_array[i], rdata, pkt);
-        if (rdata->rtt_valid == 1)
-            printPacketStdout(&ale_array[i], pkt, rdata->rtt);
+        get_RTT_sample(&ale_array[i], &rdata, pkt);
+        if (rdata.rtt_valid == 1)
+            printPacketStdout(&ale_array[i], pkt, rdata.rtt);
     }
 }
 
@@ -95,8 +98,7 @@ void processtrace()
 	if (pkt.ih.proto != 6) {
             continue;
         }
-        ReturnData rdata; rdata.rtt_valid = 0; rdata.rtt = 0; //initialize
-        process_ale_array_packet(ale_array, ale_method_count, &rdata, &pkt);
+        process_ale_array_packet(ale_array, ale_method_count, &pkt);
         trace = nextpkt(&pkt);
     }
     cleanup_ale_array(ale_array, ale_method_count);
