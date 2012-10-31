@@ -5,7 +5,7 @@
 #define PRIMES_PER_HASH 5
 #define PRIME_SIZE 30
 
-#define LSG_BITS(B) (B & 0xf)
+#define LSG_BITS(B) (B & 0x0f)
 #define MSG_BITS(B) (B >> 4)
 
 #define INC_LSB(B) (  (B & 0xf0) | (((B & 0x0f) + 1) & 0x0f) )
@@ -64,7 +64,7 @@ u_int get_hash_index(CBF* cbf, Entry entry, u_int hash_function_index, u_int pre
     for (i = 0; i < PRIMES_PER_HASH; i++) {
         array[i] = prime_array[hash_function_index*PRIMES_PER_HASH + i];
     } 
-    array[PRIMES_PER_HASH] = entry; 
+    array[PRIMES_PER_HASH] = entry ^ (1 << hash_function_index); 
     u_int hval = hashword(array, PRIMES_PER_HASH + 1, prev_hash);
     return (hval % cbf->C);
 }
@@ -122,9 +122,9 @@ void combine_cbf(CBF* cbf, CBF* cbf_next) {// append contents fo cbf to cbf_next
     assert(cbf->array_count == cbf_next->array_count);
     int i = 0;
     for (i = 0; i < cbf->array_count; i++) {
-        u_int msb = LSG_BITS(cbf->array[i]) + LSG_BITS(cbf_next->array[i]);
-        u_int lsb = MSG_BITS(cbf->array[i]) + MSG_BITS(cbf_next->array[i]);
-        if (msb > 0xff) msb = 0xff; if (lsb > 0xff) lsb = 0xff;
+        u_int lsb = LSG_BITS(cbf->array[i]) + LSG_BITS(cbf_next->array[i]);
+        u_int msb = MSG_BITS(cbf->array[i]) + MSG_BITS(cbf_next->array[i]);
+        if (msb > 0x0f) msb = 0x0f; if (lsb > 0x0f) lsb = 0x0f;
         cbf_next->array[i] = (msb << 4) | lsb;
     }
 }
