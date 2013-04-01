@@ -92,6 +92,7 @@ void processtrace()
 	err(EXIT_FAILURE, "readnextpkt");
 
     u_int ale_method_count = 5;
+    // if ale_method_count = 1 we just use ALE-U(96), otherwise, we use ALE-E 12, ALE-U(12), ALE-U(24), ALE-U(48), ALE-U(96) to compare different solutions
     Ale ale_array[ale_method_count];
     initialize_ale_array(ale_array, ale_method_count);
     /* start reading the trace */
