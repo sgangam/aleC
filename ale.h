@@ -9,6 +9,10 @@
 
 //#define MAX(x, y) (((x) > (y)) ? (x) : (y))
 //#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+/**
+ *
+ * @author: Sriharsha Gangam
+ */
 
 typedef enum _ale_type {
     U, E
